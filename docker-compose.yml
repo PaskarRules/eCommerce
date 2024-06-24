@@ -1,0 +1,57 @@
+version: '3'
+services:
+
+  postgres:
+    image: postgres:16.1
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ecomerce
+      POSTGRES_USER: manager
+      POSTGRES_PASSWORD: manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres-data:/var/lib/postgresql/data
+    networks:
+      - appnet
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - appnet
+
+  ecomerce:
+    container_name: ecomerce
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    command: './manage.py runserver 0.0.0.0:8000'
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - appnet
+    env_file:
+      - .env
+
+  ecomerce-cellery:
+    container_name: ecomerce-cellery
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: 'celery -A eComerce worker -l info'
+    depends_on:
+      - redis
+      - postgres
+      - ecomerce
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
